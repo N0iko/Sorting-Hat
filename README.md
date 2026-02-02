@@ -5,7 +5,7 @@ The end‑to‑end pipeline is:
 
 1. User enters a contract address (with `0x`).
 2. Retrieve on‑chain bytecode via an Ethereum RPC endpoint.
-3. Use `vandal-master`https://github.com/usyd-blockchain/vandal to decompile bytecode into CFG facts.
+3. Use vandal-master https://github.com/usyd-blockchain/vandal to decompile bytecode into CFG facts.
 4. Run a GNN model (PyTorch Geometric) on the facts to estimate maliciousness.
 5. Return the result via **CLI** or **Web UI**, including *malicious score* and *model confidence*.
 

@@ -1,6 +1,6 @@
 ## Detect Malicious Smart Contract via GNN
 
-Sorting-Hat is a tool that determines if a contract is a malicious smart contract. 
+Sorting-Hat is a tool that determines giving contract is a malicious smart contract or not. 
 
 The end‑to‑end pipeline is:
 

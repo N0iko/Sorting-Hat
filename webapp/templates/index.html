@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Malicious Smart Contract Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --danger: #f85149;
+      --warn: #d29922;
+      --success: #3fb950;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans SC", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+    .container {
+      width: 100%;
+      max-width: 560px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.95rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+    }
+    input[type="text"]::placeholder { color: var(--text-muted); }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .btn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.85rem 1.5rem;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 500;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .status {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--text-muted);
+    }
+    .status.loading {
+      color: var(--accent);
+    }
+    .status.error {
+      color: var(--danger);
+    }
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result { padding: 1.25rem; }
+    .result h3 {
+      font-size: 1rem;
+      margin: 0 0 1rem 0;
+      color: var(--text-muted);
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .result-row:last-child { border-bottom: none; }
+    .result-value {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 600;
+    }
+    .conclusion {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 8px;
+      font-weight: 500;
+      text-align: center;
+    }
+    .conclusion.malicious { background: rgba(248,81,73,0.15); color: var(--danger); }
+    .conclusion.suspicious { background: rgba(210,153,34,0.15); color: var(--warn); }
+    .conclusion.benign { background: rgba(63,185,80,0.15); color: var(--success); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Malicious Smart Contract Detection</h1>
+    <p class="subtitle">Enter the Ethereum contract address to get the Bytecode → CFG → GNN detection result</p>
+
+    <div class="card">
+      <label for="address">Contract Address</label>
+      <input type="text" id="address" placeholder="0x..." autocomplete="off">
+      <button type="button" class="btn" id="submit">Start Detection</button>
+    </div>
+
+    <div class="card" id="result-card" style="display: none;">
+      <div id="result-content"></div>
+    </div>
+  </div>
+
+  <script>
+    const addressInput = document.getElementById("address");
+    const submitBtn = document.getElementById("submit");
+    const resultCard = document.getElementById("result-card");
+    const resultContent = document.getElementById("result-content");
+
+    function setStatus(msg, className = "") {
+      resultCard.style.display = "block";
+      resultContent.innerHTML = '<div class="status ' + className + '">' + msg + "</div>";
+    }
+
+    function showResult(data) {
+      const c = data.conclusion_key || "benign";
+      resultCard.style.display = "block";
+      resultContent.innerHTML = `
+        <div class="result">
+          <h3>Detection Report · ${escapeHtml(data.contract_name || "")}</h3>
+          <div class="result-row"><span>Malicious Score</span><span class="result-value">${escapeHtml(data.score_pct || "")}</span></div>
+          <div class="result-row"><span>Model Confidence</span><span class="result-value">${escapeHtml(data.consistency_pct || "")}</span></div>
+          <div class="conclusion ${c}">${escapeHtml(data.conclusion || "")}</div>
+        </div>
+      `;
+    }
+
+    function showError(msg) {
+      setStatus("Error: " + msg, "error");
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function poll(jobId) {
+      fetch("/status/" + jobId)
+        .then(r => r.json())
+        .then(res => {
+          if (!res.ok) {
+            showError(res.error || "Request failed");
+            submitBtn.disabled = false;
+            return;
+          }
+          if (res.status === "pending") {
+            setStatus('<span class="spinner"></span> Executing: Download Bytecode → Vandal Decompile → GNN Detection, please wait…', "loading");
+            setTimeout(() => poll(jobId), 2000);
+            return;
+          }
+          submitBtn.disabled = false;
+          if (res.status === "error") {
+            showError(res.result && res.result.error ? res.result.error : "Detection failed");
+            return;
+          }
+          if (res.status === "done" && res.result) {
+            showResult(res.result);
+          }
+        })
+        .catch(() => {
+          showError("Network error");
+          submitBtn.disabled = false;
+        });
+    }
+
+    submitBtn.addEventListener("click", () => {
+      const address = addressInput.value.trim();
+      if (!address) {
+        showError("Please enter the contract address");
+        resultCard.style.display = "block";
+        return;
+      }
+      submitBtn.disabled = true;
+      setStatus('<span class="spinner"></span> Submitting…', "loading");
+      resultCard.style.display = "block";
+
+      fetch("/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: address.startsWith("0x") ? address : "0x" + address }),
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res.ok) {
+            showError(res.error || "Submission failed");
+            submitBtn.disabled = false;
+            return;
+          }
+          setStatus('<span class="spinner"></span> Task created, executing…', "loading");
+          poll(res.job_id);
+        })
+        .catch(() => {
+          showError("Network error");
+          submitBtn.disabled = false;
+        });
+    });
+  </script>
+</body>
+</html>

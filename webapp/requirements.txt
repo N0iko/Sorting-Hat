@@ -1,0 +1,2 @@
+# Web App 依赖（其余依赖与主项目相同：web3, torch, torch_geometric 等）
+flask>=2.0

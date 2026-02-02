@@ -1,6 +1,7 @@
-## Smart Contract Malicious Behavior Detection Project
+## Detect Malicious Smart Contract via GNN
 
-This project implements a **malicious behavior detection system for Ethereum smart contracts**.  
+Sorting-Hat is a tool that is use for determining if a contract is a malicious smart contract. 
+
 The end‑to‑end pipeline is:
 
 1. User enters a contract address (with `0x`).
@@ -166,7 +167,7 @@ Example interpretations:
 - **Low malicious score + high confidence**: models consistently consider the contract benign.  
 - **Low malicious score + low confidence**: unstable conclusion; treat with caution and investigate further.
 
-
+If api expired, please go to Alchemy, get your own api, and replace it.
 ## License & Disclaimer
 
 This project is intended **for research and educational purposes only** and does **not** constitute any form of investment advice or security guarantee.  

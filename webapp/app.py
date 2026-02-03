@@ -1,13 +1,10 @@
-
-
-
 import os
 import sys
 import uuid
 import threading
 
 
-FYP_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FYP_ROOT = os.getcwd()
 if FYP_ROOT not in sys.path:
     sys.path.insert(0, FYP_ROOT)
 

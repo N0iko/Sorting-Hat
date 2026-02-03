@@ -12,7 +12,7 @@ import sys
 import subprocess
 
 
-FYP_ROOT = os.path.dirname(os.path.abspath(__file__))
+FYP_ROOT = os.getcwd()
 VANDAL_ROOT = os.path.join(FYP_ROOT, "vandal-master")
 HEX_INPUT_DIR = os.path.join(VANDAL_ROOT, "contracts_input_hex")
 CFG_OUTPUT_DIR = os.path.join(VANDAL_ROOT, "contracts_output_cfg")

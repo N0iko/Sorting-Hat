@@ -23,9 +23,10 @@ class ContractGNN(torch.nn.Module):
         return self.lin(x)
 
 
-MODEL_DIR = r"C:\Users\john\Desktop\FYP" 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+MODEL_DIR = PROJECT_ROOT
 MODEL_PATHS = [os.path.join(MODEL_DIR, f'model_fold_{i}.pth') for i in range(1, 6)]
-
 
 TARGET_FACTS = r"  " #input path
 

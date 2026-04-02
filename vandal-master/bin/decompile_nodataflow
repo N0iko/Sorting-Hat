@@ -221,7 +221,7 @@ if args.config is not None:
         settings.set_from_string(k, v)
 
 # Run data flow analysis
-dataflow.analyse_graph(cfg)
+#dataflow.analyse_graph(cfg)
 
 # Generate output using the requested exporter(s)
 if not args.no_out:

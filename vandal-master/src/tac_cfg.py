@@ -1490,10 +1490,14 @@ class Destackifier:
         # Generate the appropriate TAC operation.
         # Special cases first, followed by the fallback to generic instructions.
         if op.opcode.is_push():
-            args = [TACArg(var=mem.Variable(values=[op.value], name="C"))]
+            # PUSH0 沒有立即數（op.value=None），這裡統一當成常數 0
+            const_val = op.value if op.value is not None else 0
+            args = [TACArg(var=mem.Variable(values=[const_val], name="C"))]
             inst = TACAssignOp(new_var, opcodes.CONST, args, op.pc, print_name=False)
         elif op.opcode.is_missing():
-            args = [TACArg(var=mem.Variable(values=[op.value], name="C"))]
+            # 未知 opcode 也可能沒有 value，統一當成 0，避免 None 參與算術
+            const_val = op.value if op.value is not None else 0
+            args = [TACArg(var=mem.Variable(values=[const_val], name="C"))]
             inst = TACOp(op.opcode, args, op.pc)
         elif op.opcode.is_log():
             args = [TACArg.from_var(var) for var in self.stack.pop_many(op.opcode.pop)]
@@ -1513,12 +1517,13 @@ class Destackifier:
         elif op.opcode == opcodes.SSTORE:
             args = [TACArg.from_var(var) for var in self.stack.pop_many(opcodes.SSTORE.pop)]
             inst = TACOp(op.opcode, args, op.pc)
-        elif new_var is not None:
-            args = [TACArg.from_var(var) for var in self.stack.pop_many(op.opcode.pop)]
-            inst = TACAssignOp(new_var, op.opcode, args, op.pc)
         else:
+            # 其他指令照原本邏輯：如果有返回值就產生 TACAssignOp，否則 TACOp
             args = [TACArg.from_var(var) for var in self.stack.pop_many(op.opcode.pop)]
-            inst = TACOp(op.opcode, args, op.pc)
+            if new_var is not None:
+                inst = TACAssignOp(new_var, op.opcode, args, op.pc)
+            else:
+                inst = TACOp(op.opcode, args, op.pc)
 
         # This var must only be pushed after the operation is performed.
         if new_var is not None:

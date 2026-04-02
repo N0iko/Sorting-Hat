@@ -96,12 +96,8 @@
       padding: 1.5rem;
       color: var(--text-muted);
     }
-    .status.loading {
-      color: var(--accent);
-    }
-    .status.error {
-      color: var(--danger);
-    }
+    .status.loading { color: var(--accent); }
+    .status.error { color: var(--danger); }
     .spinner {
       display: inline-block;
       width: 20px;
@@ -114,45 +110,67 @@
       margin-right: 0.5rem;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .result { padding: 1.25rem; }
+    
+    .result { padding: 0.5rem; }
     .result h3 {
-      font-size: 1rem;
-      margin: 0 0 1rem 0;
-      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin: 0 0 1.5rem 0;
+      color: var(--text);
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
     }
     .result-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 0.5rem 0;
-      border-bottom: 1px solid var(--border);
     }
-    .result-row:last-child { border-bottom: none; }
     .result-value {
       font-family: "JetBrains Mono", monospace;
       font-weight: 600;
     }
+    
+    /* 新增：进度条样式 */
+    .score-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      margin-top: 8px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      transition: width 0.8s ease-out;
+    }
+    .fill-malicious { background: var(--danger); }
+    .fill-suspicious { background: var(--warn); }
+    .fill-benign { background: var(--success); }
+
     .conclusion {
-      margin-top: 1rem;
-      padding: 1rem;
+      margin-top: 1.5rem;
+      padding: 1.25rem;
       border-radius: 8px;
-      font-weight: 500;
       text-align: center;
     }
-    .conclusion.malicious { background: rgba(248,81,73,0.15); color: var(--danger); }
-    .conclusion.suspicious { background: rgba(210,153,34,0.15); color: var(--warn); }
-    .conclusion.benign { background: rgba(63,185,80,0.15); color: var(--success); }
+    .conclusion strong { display: block; font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .conclusion p { margin: 0; font-size: 0.85rem; opacity: 0.85; line-height: 1.4; }
+    .conclusion.malicious { background: rgba(248,81,73,0.15); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+    .conclusion.suspicious { background: rgba(210,153,34,0.15); color: var(--warn); border: 1px solid rgba(210,153,34,0.3); }
+    .conclusion.benign { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Malicious Smart Contract Detection</h1>
-    <p class="subtitle">Enter the Ethereum contract address to get the Bytecode → CFG → GNN detection result</p>
+    <h1>Malicious Contract Detection</h1>
+    <p class="subtitle">AI-Powered Smart Contract Security Analysis Pipeline</p>
 
     <div class="card">
-      <label for="address">Contract Address</label>
+      <label for="address">Ethereum Contract Address</label>
       <input type="text" id="address" placeholder="0x..." autocomplete="off">
-      <button type="button" class="btn" id="submit">Start Detection</button>
+      <button type="button" class="btn" id="submit">Start Security Scan</button>
     </div>
 
     <div class="card" id="result-card" style="display: none;">
@@ -171,15 +189,51 @@
       resultContent.innerHTML = '<div class="status ' + className + '">' + msg + "</div>";
     }
 
+    // 获取颜色变量
+    function getColorVar(type) {
+      if (type === 'malicious') return 'danger';
+      if (type === 'suspicious') return 'warn';
+      return 'success';
+    }
+
+    // 获取安全建议
+    function getAdvice(type) {
+      if (type === 'malicious') return "Warning: This contract exhibits high-risk malicious patterns or backdoor topological structures.";
+      if (type === 'suspicious') return "Caution: Contract contains obfuscated logic or unusual permission controls. Manual audit is highly recommended.";
+      return "Safe: No obvious malicious graph structures detected. Conforms to standard development patterns.";
+    }
+
     function showResult(data) {
       const c = data.conclusion_key || "benign";
+      const scoreVal = parseFloat(data.score_pct) || 0; 
+      
       resultCard.style.display = "block";
       resultContent.innerHTML = `
         <div class="result">
-          <h3>Detection Report · ${escapeHtml(data.contract_name || "")}</h3>
-          <div class="result-row"><span>Malicious Score</span><span class="result-value">${escapeHtml(data.score_pct || "")}</span></div>
-          <div class="result-row"><span>Model Confidence</span><span class="result-value">${escapeHtml(data.consistency_pct || "")}</span></div>
-          <div class="conclusion ${c}">${escapeHtml(data.conclusion || "")}</div>
+          <h3>Detection Report</h3>
+          
+          <div class="result-row">
+            <span>Malicious Score</span>
+            <span class="result-value" style="color: var(--${getColorVar(c)})">${escapeHtml(data.score_pct || "0%")}</span>
+          </div>
+          <div class="score-bar-bg">
+            <div class="score-bar-fill fill-${c}" style="width: ${scoreVal}%"></div>
+          </div>
+
+          <div class="result-row">
+            <span>Model Confidence (Consistency)</span>
+            <span class="result-value">${escapeHtml(data.consistency_pct || "N/A")}</span>
+          </div>
+          
+          <div class="result-row">
+            <span>Ensemble Models Used</span>
+            <span class="result-value">${escapeHtml(String(data.models_used || "0"))}</span>
+          </div>
+
+          <div class="conclusion ${c}">
+            <strong>${escapeHtml(data.conclusion || "Unknown")}</strong>
+            <p>${getAdvice(c)}</p>
+          </div>
         </div>
       `;
     }
@@ -204,13 +258,16 @@
             return;
           }
           if (res.status === "pending") {
-            setStatus('<span class="spinner"></span> Executing: Download Bytecode → Vandal Decompile → GNN Detection, please wait…', "loading");
+            setStatus('<span class="spinner"></span> Executing: Downloading Bytecode → Vandal Decompile → GNN Inference...', "loading");
             setTimeout(() => poll(jobId), 2000);
             return;
           }
           submitBtn.disabled = false;
           if (res.status === "error") {
-            showError(res.result && res.result.error ? res.result.error : "Detection failed");
+            let errorMsg = "Detection failed during pipeline execution.";
+            if (typeof res.result === 'string') errorMsg = res.result;
+            else if (res.result && res.result.error) errorMsg = res.result.error;
+            showError(errorMsg);
             return;
           }
           if (res.status === "done" && res.result) {
@@ -218,7 +275,7 @@
           }
         })
         .catch(() => {
-          showError("Network error");
+          showError("Network connection error while polling status.");
           submitBtn.disabled = false;
         });
     }
@@ -226,12 +283,12 @@
     submitBtn.addEventListener("click", () => {
       const address = addressInput.value.trim();
       if (!address) {
-        showError("Please enter the contract address");
+        showError("Please enter a valid Ethereum contract address.");
         resultCard.style.display = "block";
         return;
       }
       submitBtn.disabled = true;
-      setStatus('<span class="spinner"></span> Submitting…', "loading");
+      setStatus('<span class="spinner"></span> Submitting task...', "loading");
       resultCard.style.display = "block";
 
       fetch("/analyze", {
@@ -246,11 +303,11 @@
             submitBtn.disabled = false;
             return;
           }
-          setStatus('<span class="spinner"></span> Task created, executing…', "loading");
+          setStatus('<span class="spinner"></span> Task initialized in queue...', "loading");
           poll(res.job_id);
         })
         .catch(() => {
-          showError("Network error");
+          showError("Network connection error during submission.");
           submitBtn.disabled = false;
         });
     });

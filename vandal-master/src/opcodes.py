@@ -27,7 +27,20 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""opcodes.py: Definitions of all EVM opcodes, and related utility functions."""
+
+"""opcodes.py: Definitions of all EVM opcodes, and related utility functions.
+
+Updated to include post-2017 opcodes:
+  - Constantinople (2019): SHL, SHR, SAR, EXTCODEHASH, CREATE2
+  - Istanbul     (2019): CHAINID, SELFBALANCE
+  - Berlin       (2021): (gas repricing only, no new opcodes)
+  - London       (2021): BASEFEE (EIP-3198)
+  - Merge/Paris  (2022): PREVRANDAO replaces DIFFICULTY (EIP-4399)
+  - Shanghai     (2023): PUSH0 (EIP-3855)
+  - Cancun       (2024): TLOAD, TSTORE (EIP-1153), MCOPY (EIP-5656),
+                          BLOBHASH (EIP-4844), BLOBBASEFEE (EIP-7516)
+"""
+
 
 
 class OpCode:
@@ -68,7 +81,7 @@ class OpCode:
 
     def is_push(self) -> bool:
         """Predicate: opcode is a push operation."""
-        return PUSH1.code <= self.code <= PUSH32.code
+        return self.code == PUSH0.code or (PUSH1.code <= self.code <= PUSH32.code)
 
     def is_swap(self) -> bool:
         """Predicate: opcode is a swap operation."""
@@ -95,11 +108,13 @@ class OpCode:
 
     def is_memory(self) -> bool:
         """Predicate: opcode operates on memory"""
-        return MLOAD.code <= self.code <= MSTORE8.code
+        return (MLOAD.code <= self.code <= MSTORE8.code) or \
+               (self.code == MCOPY.code)
 
     def is_storage(self) -> bool:
         """Predicate: opcode operates on storage ('the tape')"""
-        return SLOAD.code <= self.code <= SSTORE.code
+        return (SLOAD.code <= self.code <= SSTORE.code) or \
+               (TLOAD.code <= self.code <= TSTORE.code)
 
     def is_call(self) -> bool:
         """Predicate: opcode calls an external contract"""
@@ -108,7 +123,7 @@ class OpCode:
     def alters_flow(self) -> bool:
         """Predicate: opcode alters EVM control flow."""
         return (self.code in (JUMP.code, JUMPI.code,)) or self.possibly_halts()
-    
+
     def is_exception(self) -> bool:
         """Predicate: opcode causes the EVM to throw an exception."""
         return (self.code in (THROW.code, THROWI.code, REVERT.code)) \
@@ -131,6 +146,8 @@ class OpCode:
 
     def push_len(self) -> int:
         """Return the number of bytes the given PUSH instruction pushes."""
+        if self.code == PUSH0.code:
+            return 0
         return self.code - PUSH1.code + 1 if self.is_push() else 0
 
     def log_len(self) -> int:
@@ -166,9 +183,9 @@ OR = OpCode("OR", 0x17, 2, 1)
 XOR = OpCode("XOR", 0x18, 2, 1)
 NOT = OpCode("NOT", 0x19, 1, 1)
 BYTE = OpCode("BYTE", 0x1a, 2, 1)
-SHL = OpCode("SHL", 0x1b, 2, 1) # for block.number >= CONSTANTINOPLE_FORK_BLKNUM
-SHR = OpCode("SHR", 0x1c, 2, 1) # for block.number >= CONSTANTINOPLE_FORK_BLKNUM
-SAR = OpCode("SAR", 0x1d, 2, 1) # for block.number >= CONSTANTINOPLE_FORK_BLKNUM
+SHL = OpCode("SHL", 0x1b, 2, 1)         # Constantinople EIP-145
+SHR = OpCode("SHR", 0x1c, 2, 1)         # Constantinople EIP-145
+SAR = OpCode("SAR", 0x1d, 2, 1)         # Constantinople EIP-145
 
 SHA3 = OpCode("SHA3", 0x20, 2, 1)
 
@@ -186,17 +203,23 @@ CODECOPY = OpCode("CODECOPY", 0x39, 3, 0)
 GASPRICE = OpCode("GASPRICE", 0x3a, 0, 1)
 EXTCODESIZE = OpCode("EXTCODESIZE", 0x3b, 1, 1)
 EXTCODECOPY = OpCode("EXTCODECOPY", 0x3c, 4, 0)
-RETURNDATASIZE = OpCode("RETURNDATASIZE", 0x3d, 0, 1) # for block.number >= BYZANTIUM_FORK_BLKNUM
-RETURNDATACOPY = OpCode("RETURNDATACOPY", 0x3e, 3, 0) # for block.number >= BYZANTIUM_FORK_BLKNUM
-EXTCODEHASH = OpCode("EXTCODEHASH", 0x3f, 1, 1) # for block.number >= CONSTANTINOPLE_FORK_BLKNUM
+RETURNDATASIZE = OpCode("RETURNDATASIZE", 0x3d, 0, 1)   # Byzantium EIP-211
+RETURNDATACOPY = OpCode("RETURNDATACOPY", 0x3e, 3, 0)   # Byzantium EIP-211
+EXTCODEHASH = OpCode("EXTCODEHASH", 0x3f, 1, 1)         # Constantinople EIP-1052
 
 # Block Information
 BLOCKHASH = OpCode("BLOCKHASH", 0x40, 1, 1)
 COINBASE = OpCode("COINBASE", 0x41, 0, 1)
 TIMESTAMP = OpCode("TIMESTAMP", 0x42, 0, 1)
 NUMBER = OpCode("NUMBER", 0x43, 0, 1)
-DIFFICULTY = OpCode("DIFFICULTY", 0x44, 0, 1)
+PREVRANDAO = OpCode("PREVRANDAO", 0x44, 0, 1)   # Merge EIP-4399 (was DIFFICULTY)
+DIFFICULTY = PREVRANDAO                          # alias kept for backward compat
 GASLIMIT = OpCode("GASLIMIT", 0x45, 0, 1)
+CHAINID = OpCode("CHAINID", 0x46, 0, 1)         # Istanbul EIP-1344
+SELFBALANCE = OpCode("SELFBALANCE", 0x47, 0, 1) # Istanbul EIP-1884
+BASEFEE = OpCode("BASEFEE", 0x48, 0, 1)         # London EIP-3198
+BLOBHASH = OpCode("BLOBHASH", 0x49, 1, 1)       # Cancun EIP-4844
+BLOBBASEFEE = OpCode("BLOBBASEFEE", 0x4a, 0, 1) # Cancun EIP-7516
 
 # Stack, Memory, Storage, Flow
 POP = OpCode("POP", 0x50, 1, 0)
@@ -211,6 +234,10 @@ PC = OpCode("PC", 0x58, 0, 1)
 MSIZE = OpCode("MSIZE", 0x59, 0, 1)
 GAS = OpCode("GAS", 0x5a, 0, 1)
 JUMPDEST = OpCode("JUMPDEST", 0x5b, 0, 0)
+TLOAD = OpCode("TLOAD", 0x5c, 1, 1)    # Cancun EIP-1153
+TSTORE = OpCode("TSTORE", 0x5d, 2, 0)  # Cancun EIP-1153
+MCOPY = OpCode("MCOPY", 0x5e, 3, 0)    # Cancun EIP-5656
+PUSH0 = OpCode("PUSH0", 0x5f, 0, 1)    # Shanghai EIP-3855
 
 PUSH1 = OpCode("PUSH1", 0x60, 0, 1)
 PUSH2 = OpCode("PUSH2", 0x61, 0, 1)
@@ -292,19 +319,19 @@ CALL = OpCode("CALL", 0xf1, 7, 1)
 CALLCODE = OpCode("CALLCODE", 0xf2, 7, 1)
 RETURN = OpCode("RETURN", 0xf3, 2, 0)
 DELEGATECALL = OpCode("DELEGATECALL", 0xf4, 6, 1)
-CREATE2 = OpCode("CREATE2", 0xf5, 4, 1) # for block.number >= CONSTANTINOPLE_FORK_BLKNUM
-STATICCALL = OpCode("STATICCALL", 0xfa, 6, 1) # for block.number >= BYZANTIUM_FORK_BLKNUM
-REVERT = OpCode("REVERT", 0xfd, 2, 0) # for block.number >= BYZANTIUM_FORK_BLKNUM
+CREATE2 = OpCode("CREATE2", 0xf5, 4, 1)         # Constantinople EIP-1014
+STATICCALL = OpCode("STATICCALL", 0xfa, 6, 1)   # Byzantium EIP-214
+REVERT = OpCode("REVERT", 0xfd, 2, 0)           # Byzantium EIP-140
 INVALID = OpCode("INVALID", 0xfe, 0, 0)
 SELFDESTRUCT = OpCode("SELFDESTRUCT", 0xff, 1, 0)
 
-# TAC Operations
-# These are not EVM opcodes, but they are used by the three-address code
+# TAC Operations (not real EVM opcodes, used internally by Vandal)
 NOP = OpCode("NOP", -1, 0, 0)
 CONST = OpCode("CONST", -2, 0, 0)
 LOG = OpCode("LOG", -3, 0, 0)
 THROW = OpCode("THROW", -4, 0, 0)
 THROWI = OpCode("THROWI", -5, 0, 0)
+
 
 # Produce mappings from names and instruction codes to opcode objects
 OPCODES = {
@@ -316,12 +343,14 @@ OPCODES = {
 
 # Handle incorrect opcode name from go-ethereum disasm
 OPCODES["TXGASPRICE"] = OPCODES["GASPRICE"]
+# Backward compat alias: DIFFICULTY -> PREVRANDAO
+OPCODES["DIFFICULTY"] = OPCODES["PREVRANDAO"]
 
-BYTECODES = {code.code: code for code in OPCODES.values()}
+BYTECODES = {code.code: code for code in OPCODES.values() if code.code >= 0}
 """Dictionary mapping of byte values to EVM OpCode objects"""
 
 
-def opcode_by_name(name: str) -> OpCode:
+def opcode_by_name(name: str) -> "OpCode":
     """
     Mapping: Retrieves the named OpCode object (case-insensitive).
 
@@ -334,7 +363,7 @@ def opcode_by_name(name: str) -> OpCode:
     return OPCODES[name]
 
 
-def opcode_by_value(val: int) -> OpCode:
+def opcode_by_value(val: int) -> "OpCode":
     """
     Mapping: Retrieves the OpCode object with the given value.
 
@@ -346,7 +375,7 @@ def opcode_by_value(val: int) -> OpCode:
     return BYTECODES[val]
 
 
-def missing_opcode(val: int) -> OpCode:
+def missing_opcode(val: int) -> "OpCode":
     """
     Produces a new OpCode with the given value, as long as that is
     an unknown code.

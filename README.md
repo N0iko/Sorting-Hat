@@ -22,6 +22,11 @@ There are two main entrypoints:
 - OS: Windows / Linux / macOS (paths in code currently assume Windows, but can be adjusted).
 - A reachable Ethereum RPC endpoint (e.g. Alchemy, Infura, or your own node).  
   The default RPC URL is configured in `pipeline.py` and can be replaced.
+  
+## Dataset
+
+The benign contracts dataset came from Google BigQuery. You can use the SQL form dataset file to get the benign contracts.
+malicious contracts came form [Lookadhead](https://github.com/zju-abclab/LookAhead) and [forta](https://github.com/forta-network/labelled-datasets)
 
 ---
 

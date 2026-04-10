@@ -131,7 +131,7 @@
       font-weight: 600;
     }
     
-    /* 新增：进度条样式 */
+    
     .score-bar-bg {
       width: 100%;
       height: 8px;
@@ -189,14 +189,14 @@
       resultContent.innerHTML = '<div class="status ' + className + '">' + msg + "</div>";
     }
 
-    // 获取颜色变量
+    
     function getColorVar(type) {
       if (type === 'malicious') return 'danger';
       if (type === 'suspicious') return 'warn';
       return 'success';
     }
 
-    // 获取安全建议
+   
     function getAdvice(type) {
       if (type === 'malicious') return "Warning: This contract exhibits high-risk malicious patterns or backdoor topological structures.";
       if (type === 'suspicious') return "Caution: Contract contains obfuscated logic or unusual permission controls. Manual audit is highly recommended.";

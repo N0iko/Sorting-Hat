@@ -1,22 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Alchemy pending full transaction object version (with boundary protection and exception fallback)
-pending pool -> creation input(initcode) -> local restore runtime -> Vandal -> GNN
-
-Dependencies:
-pip install web3 websockets eth-hash
-
-Description:
-1. Use eth_subscribe to subscribe to alchemy_pendingTransactions
-2. Receive complete pending transaction object directly (no second get_transaction)
-3. Filter contract creation transactions (to == None)
-4. Read creation code from input
-5. Execute creation code locally and attempt to recover RETURNed runtime bytecode
-6. Save runtime .hex
-7. Call vandal-master to generate CFG
-8. Call GNN/detect.py for detection
-"""
-
 import os
 import sys
 import json
@@ -31,9 +12,7 @@ import websockets
 from web3 import Web3
 
 
-# =========================
-# Configuration
-# =========================
+
 FYP_ROOT = os.path.dirname(os.path.abspath(__file__))
 VANDAL_ROOT = os.path.join(FYP_ROOT, "vandal-master")
 HEX_INPUT_DIR = os.path.join(VANDAL_ROOT, "contracts_input_hex")
@@ -47,18 +26,17 @@ WSS_URL = "wss://eth-mainnet.g.alchemy.com/v2/iMNPA4ol4G9MzbMFo5mQ0"
 MAX_WORKERS = 4
 STEP_LIMIT = 200000
 
-# Added: boundary protection
-MAX_MEMORY_BYTES = 16 * 1024 * 1024   # 16 MB
-MAX_COPY_BYTES = 4 * 1024 * 1024      # 4 MB
-MAX_RETURN_BYTES = 4 * 1024 * 1024    # 4 MB
 
-# False: skip when extraction fails (recommended; better suited for reuse with existing runtime-GNN)
-# True: fallback to direct initcode analysis when extraction fails
+MAX_MEMORY_BYTES = 16 * 1024 * 1024   
+MAX_COPY_BYTES = 4 * 1024 * 1024      
+MAX_RETURN_BYTES = 4 * 1024 * 1024    
+
+
 FALLBACK_TO_INITCODE = False
 
-# Allow simulating external calls in local pre-execution; default off for safety
+
 ALLOW_EXTERNAL_CALLS = False
-# =========================
+
 
 
 w3 = Web3(Web3.HTTPProvider(RPC_URL))
@@ -966,7 +944,7 @@ async def subscribe_pending_transactions():
                 if not tx_hash or tx_hash in seen_hashes: continue
 
                 seen_hashes.add(tx_hash)
-                # trigger detection
+                
                 loop = asyncio.get_running_loop()
                 loop.run_in_executor(None, process_pending_tx_object, tx)
 
@@ -983,10 +961,10 @@ def run_vandal_decompile(hex_path, output_name):
     out_dir = os.path.join(CFG_OUTPUT_DIR, output_name)
     decompile_script = os.path.join(VANDAL_ROOT, "bin", "decompile")
     
-    # The previous error was caused by the missing function definition for the line below
+    
     clean_and_create_dir(out_dir)
     
-    # Core alignment parameters
+    
     cmd = [
         sys.executable, decompile_script, hex_path, 
         "-t", out_dir, 
@@ -997,7 +975,7 @@ def run_vandal_decompile(hex_path, output_name):
     print(f"[*] Running Vandal decompilation (alignment mode: iterations=5)...")
     
     try:
-        # Try standard alignment decompilation
+        
         res = subprocess.run(cmd, cwd=VANDAL_ROOT, capture_output=True, text=True, timeout=200)
         
         if res.returncode == 0:
@@ -1184,7 +1162,7 @@ def main():
 
     print("[*] HTTP RPC connection successful")
 
-    # Important: ensure this function name matches the subscription function defined above
+    
     try:
         asyncio.run(subscribe_pending_transactions()) 
     except KeyboardInterrupt:

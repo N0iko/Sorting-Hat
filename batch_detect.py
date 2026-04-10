@@ -1,12 +1,3 @@
-"""
-Smart contract detection pipeline:
-1. Supports single address or batch detection (read contract addresses from a txt file)
-2. Download bytecode and save as .hex
-3. Use vandal-master to convert .hex to CFG facts
-4. Use GNN/detect.py (with scaler normalization) for malicious contract detection
-5. Save results as txt report + CSV (for later analysis)
-"""
-
 import os
 import sys
 import re
@@ -17,7 +8,7 @@ import time
 from datetime import datetime
 
 
-# ===== Configuration (modify as needed) =====
+
 FYP_ROOT = os.path.dirname(os.path.abspath(__file__))
 VANDAL_ROOT = os.path.join(FYP_ROOT, "vandal-master")
 HEX_INPUT_DIR = os.path.join(VANDAL_ROOT, "contracts_input_hex")
@@ -26,13 +17,13 @@ GNN_DIR = os.path.join(FYP_ROOT, "GNN")
 RPC_URL = "https://eth-mainnet.g.alchemy.com/v2/NKKDehg7-0Cj4b3FUJugH"
 BATCH_RESULTS_DIR = os.path.join(FYP_ROOT, "batch_results")
 DELAY_BETWEEN_ADDRESSES = 0.5   # Delay between processing each address (seconds)
-# ============================
 
-# Ethereum address regex
+
+
 _ETH_ADDR_RE = re.compile(r'^0x[0-9a-fA-F]{40}$')
 
 
-# ──────────────────────── Utility functions ───────────────────────────────
+
 
 def normalize_address(address: str):
     """Normalize and validate the address format. Return None for invalid addresses."""
@@ -136,11 +127,6 @@ def run_vandal_decompile(hex_path, output_name):
 
 
 def run_gnn_detect(facts_dir: str, return_result: bool = False):
-    """
-    Call GNN/detect.py to detect on the specified facts directory.
-    Use importlib.reload to ensure each batch run is executed fresh,
-    avoiding stale scaler or model path caching.
-    """
     if not os.path.isdir(GNN_DIR):
         print(f"[!] GNN directory not found: {GNN_DIR}")
         return None
@@ -163,7 +149,7 @@ def run_gnn_detect(facts_dir: str, return_result: bool = False):
     return None
 
 
-# ──────────────────────── Address reading ───────────────────────────────
+
 
 def read_addresses_from_file(file_path: str):
     """
@@ -200,7 +186,7 @@ def read_addresses_from_file(file_path: str):
         return []
 
 
-# ──────────────────────── Result saving ───────────────────────────────
+
 
 def save_batch_results(results: list, timestamp: str):
     """
@@ -211,7 +197,7 @@ def save_batch_results(results: list, timestamp: str):
     os.makedirs(BATCH_RESULTS_DIR, exist_ok=True)
     base_name = f"batch_results_{timestamp}"
 
-    # ── TXT report ──
+  
     txt_path = os.path.join(BATCH_RESULTS_DIR, f"{base_name}.txt")
     success_count = sum(1 for r in results if r['success'])
     fail_count    = len(results) - success_count
@@ -242,7 +228,7 @@ def save_batch_results(results: list, timestamp: str):
 
     print(f"[✓] TXT report saved: {txt_path}")
 
-    # ── CSV (structured) ──
+  
     csv_path = os.path.join(BATCH_RESULTS_DIR, f"{base_name}.csv")
     fieldnames = [
         "index", "address", "success", "error",
@@ -275,7 +261,7 @@ def save_batch_results(results: list, timestamp: str):
     return txt_path, csv_path
 
 
-# ──────────────────────── Core pipeline ───────────────────────────────
+
 
 def run_pipeline(address: str):
     """
@@ -302,7 +288,7 @@ def run_pipeline(address: str):
     return True, result
 
 
-# ──────────────────────── Batch detection ───────────────────────────────
+
 
 def run_batch_detection(file_path: str,
                         continue_on_error: bool = True,
@@ -394,7 +380,7 @@ def run_batch_detection(file_path: str,
     return results, (txt_path, csv_path)
 
 
-# ──────────────────────── Main entry ─────────────────────────────────
+
 
 def main():
     print("=" * 65)
